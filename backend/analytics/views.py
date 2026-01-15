@@ -3,8 +3,8 @@ from datetime import date, datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from analytics.queries import fetch_kpis, fetch_revenue_trends, fetch_rfm_segments
 
-from analytics.queries import fetch_kpis, fetch_revenue_trends
 
 
 def parse_date(value: str | None, fallback: date) -> date:
@@ -87,3 +87,28 @@ class RevenueTrendsView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+class CustomerSegmentsView(APIView):
+    """
+    GET /api/v1/customers/segments/?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+    Returns aggregated RFM segments counts.
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        today = date.today()
+        date_from_default = today.replace(day=1)
+        date_to_default = today
+
+        try:
+            date_from = parse_date(request.GET.get("date_from"), date_from_default)
+            date_to = parse_date(request.GET.get("date_to"), date_to_default)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if date_from > date_to:
+            return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = fetch_rfm_segments(date_from, date_to)
+        return Response(data, status=status.HTTP_200_OK)
