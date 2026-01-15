@@ -5,3 +5,5 @@ python-dotenv>=1.0
 gunicorn>=21.2
 
 dj-database-url>=2.1
+
+Faker>=24.0
