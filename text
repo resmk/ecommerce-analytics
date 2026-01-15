@@ -1,0 +1,11 @@
+backend/ = Django + API
+
+dashboard/ = Dash app
+
+docker/ = Dockerfiles + compose
+
+docs/ = documentation (big hiring signal)
+
+data/ = sample/raw/processed datasets
+
+tests/ = tests across the system
