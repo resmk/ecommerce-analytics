@@ -3,8 +3,7 @@ from datetime import date, datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from analytics.queries import fetch_kpis, fetch_revenue_trends, fetch_rfm_segments
-
+from analytics.queries import fetch_kpis, fetch_revenue_trends, fetch_rfm_segments, fetch_top_products
 
 
 def parse_date(value: str | None, fallback: date) -> date:
@@ -111,4 +110,41 @@ class CustomerSegmentsView(APIView):
             return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
 
         data = fetch_rfm_segments(date_from, date_to)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class TopProductsView(APIView):
+    """
+    GET /api/v1/products/top-sellers/?metric=revenue|quantity&limit=10&date_from=...&date_to=...
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        today = date.today()
+        date_from_default = today.replace(day=1)
+        date_to_default = today
+
+        try:
+            date_from = parse_date(request.GET.get("date_from"), date_from_default)
+            date_to = parse_date(request.GET.get("date_to"), date_to_default)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if date_from > date_to:
+            return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
+
+        metric = (request.GET.get("metric") or "revenue").lower()
+
+        limit_raw = request.GET.get("limit", "10")
+        try:
+            limit = int(limit_raw)
+        except ValueError:
+            return Response({"error": "limit must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            data = fetch_top_products(date_from, date_to, metric, limit)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(data, status=status.HTTP_200_OK)

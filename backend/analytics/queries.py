@@ -132,3 +132,55 @@ def fetch_rfm_segments(date_from: date, date_to: date) -> dict:
         "total_customers_in_range": total,
         "segments": segments,
     }
+
+def fetch_top_products(date_from: date, date_to: date, metric: str, limit: int) -> dict:
+    """
+    Returns top products by revenue or quantity within the date range.
+    metric: revenue | quantity
+    """
+    if metric not in {"revenue", "quantity"}:
+        raise ValueError("metric must be one of: revenue, quantity")
+
+    # clamp limit to keep API safe
+    limit = max(1, min(limit, 100))
+
+    order_by = "revenue DESC" if metric == "revenue" else "quantity DESC"
+
+    sql = f"""
+        SELECT
+            p.product_id,
+            COALESCE(p.name, '') AS name,
+            COALESCE(p.category, '') AS category,
+            COALESCE(SUM(o.order_amount), 0) AS revenue,
+            COALESCE(SUM(o.quantity), 0) AS quantity
+        FROM fact_orders o
+        JOIN dim_products p
+          ON o.product_key = p.product_key
+        WHERE o.created_at::date BETWEEN %s AND %s
+        GROUP BY p.product_id, p.name, p.category
+        ORDER BY {order_by}
+        LIMIT %s;
+    """
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [date_from, date_to, limit])
+        rows = cursor.fetchall()
+
+    items = [
+        {
+            "product_id": r[0],
+            "name": r[1],
+            "category": r[2],
+            "revenue": float(r[3]),
+            "quantity": int(r[4]),
+        }
+        for r in rows
+    ]
+
+    return {
+        "metric": metric,
+        "limit": limit,
+        "date_from": str(date_from),
+        "date_to": str(date_to),
+        "items": items,
+    }
