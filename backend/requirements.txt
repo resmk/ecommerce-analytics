@@ -6,4 +6,5 @@ gunicorn>=21.2
 dj-database-url>=2.1
 Faker>=24.0
 django-redis>=5.4
+drf-spectacular>=0.27
 

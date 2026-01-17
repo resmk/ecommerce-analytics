@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "analytics",
+    "drf_spectacular",
+
 ]
 
 MIDDLEWARE = [
@@ -70,6 +72,11 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
 
 
 # Database
