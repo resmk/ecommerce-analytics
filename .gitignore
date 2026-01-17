@@ -15,3 +15,5 @@ staticfiles/
 # OS / editor
 .DS_Store
 .vscode/
+
+backend/.env

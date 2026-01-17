@@ -14,7 +14,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 
-from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -83,6 +82,16 @@ DATABASES = {
     )
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("DJANGO_REDIS_URL", "redis://localhost:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "TIMEOUT": 300,  # default 5 minutes
+    }
+}
 
 
 # Password validation

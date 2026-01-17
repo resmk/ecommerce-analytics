@@ -3,7 +3,7 @@ djangorestframework>=3.14
 psycopg2-binary>=2.9
 python-dotenv>=1.0
 gunicorn>=21.2
-
 dj-database-url>=2.1
-
 Faker>=24.0
+django-redis>=5.4
+

@@ -1,9 +1,16 @@
 from datetime import date, datetime
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from django.core.cache import cache
 from rest_framework import status
-from analytics.queries import fetch_kpis, fetch_revenue_trends, fetch_rfm_segments, fetch_top_products
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from analytics.queries import (
+    fetch_kpis,
+    fetch_revenue_trends,
+    fetch_rfm_segments,
+    fetch_top_products,
+)
 
 
 def parse_date(value: str | None, fallback: date) -> date:
@@ -37,12 +44,17 @@ class KPIView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         if date_from > date_to:
-            return Response(
-                {"error": "date_from must be <= date_to"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f"kpis:{date_from}:{date_to}"
+        cached = cache.get(cache_key)
+        if cached:
+            cached["cache"] = {"hit": True, "key": cache_key, "ttl_seconds": 300}
+            return Response(cached, status=status.HTTP_200_OK)
 
         data = fetch_kpis(date_from, date_to)
+        cache.set(cache_key, data, timeout=300)
+        data["cache"] = {"hit": False, "key": cache_key, "ttl_seconds": 300}
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -64,28 +76,32 @@ class RevenueTrendsView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        if date_from > date_to:
+            return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
+
         granularity = (request.GET.get("granularity") or "daily").lower()
 
-        if date_from > date_to:
-            return Response(
-                {"error": "date_from must be <= date_to"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        cache_key = f"revenue_trends:{granularity}:{date_from}:{date_to}"
+        cached = cache.get(cache_key)
+        if cached:
+            cached["cache"] = {"hit": True, "key": cache_key, "ttl_seconds": 300}
+            return Response(cached, status=status.HTTP_200_OK)
 
         try:
             points = fetch_revenue_trends(date_from, date_to, granularity)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(
-            {
-                "granularity": granularity,
-                "date_from": str(date_from),
-                "date_to": str(date_to),
-                "points": points,
-            },
-            status=status.HTTP_200_OK,
-        )
+        payload = {
+            "granularity": granularity,
+            "date_from": str(date_from),
+            "date_to": str(date_to),
+            "points": points,
+        }
+        cache.set(cache_key, payload, timeout=300)
+        payload["cache"] = {"hit": False, "key": cache_key, "ttl_seconds": 300}
+        return Response(payload, status=status.HTTP_200_OK)
+
 
 class CustomerSegmentsView(APIView):
     """
@@ -109,7 +125,15 @@ class CustomerSegmentsView(APIView):
         if date_from > date_to:
             return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
 
+        cache_key = f"rfm_segments:{date_from}:{date_to}"
+        cached = cache.get(cache_key)
+        if cached:
+            cached["cache"] = {"hit": True, "key": cache_key, "ttl_seconds": 600}
+            return Response(cached, status=status.HTTP_200_OK)
+
         data = fetch_rfm_segments(date_from, date_to)
+        cache.set(cache_key, data, timeout=600)
+        data["cache"] = {"hit": False, "key": cache_key, "ttl_seconds": 600}
         return Response(data, status=status.HTTP_200_OK)
 
 
@@ -142,9 +166,17 @@ class TopProductsView(APIView):
         except ValueError:
             return Response({"error": "limit must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
 
+        cache_key = f"top_products:{metric}:{limit}:{date_from}:{date_to}"
+        cached = cache.get(cache_key)
+        if cached:
+            cached["cache"] = {"hit": True, "key": cache_key, "ttl_seconds": 300}
+            return Response(cached, status=status.HTTP_200_OK)
+
         try:
             data = fetch_top_products(date_from, date_to, metric, limit)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        cache.set(cache_key, data, timeout=300)
+        data["cache"] = {"hit": False, "key": cache_key, "ttl_seconds": 300}
         return Response(data, status=status.HTTP_200_OK)
