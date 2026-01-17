@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "analytics",
     "drf_spectacular",
+    "etl",
+
 
 ]
 
