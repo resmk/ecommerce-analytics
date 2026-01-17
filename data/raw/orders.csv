@@ -1,0 +1,11 @@
+order_id,customer_id,email,country,city,product_id,product_name,category,price,quantity,discount_amount,created_at
+ORD-CSV-00000001,CUST-CSV-000001,alice@example.com,Germany,Berlin,PROD-CSV-000001,Wireless Mouse,Electronics,19.99,2,1.00,2026-01-10 10:15:00
+ORD-CSV-00000002,CUST-CSV-000002,bob@example.com,Germany,Hamburg,PROD-CSV-000002,Notebook,Books,7.50,3,0.00,2026-01-11 14:20:00
+ORD-CSV-00000003,CUST-CSV-000001,alice@example.com,Germany,Berlin,PROD-CSV-000003,Water Bottle,Sports,12.00,1,0.50,2026-01-11 09:05:00
+ORD-CSV-00000004,CUST-CSV-000003,carla@example.com,France,Paris,PROD-CSV-000001,Wireless Mouse,Electronics,19.99,1,0.00,2026-01-12 18:10:00
+ORD-CSV-00000005,CUST-CSV-000004,dan@example.com,Netherlands,Amsterdam,PROD-CSV-000004,T-Shirt,Fashion,15.00,2,2.00,2026-01-12 12:30:00
+ORD-CSV-00000006,CUST-CSV-000005,emma@example.com,Germany,Cologne,PROD-CSV-000005,Face Cream,Beauty,22.00,1,0.00,2026-01-13 08:45:00
+ORD-CSV-00000007,CUST-CSV-000002,bob@example.com,Germany,Hamburg,PROD-CSV-000006,Kids Toy,Toys,9.99,4,1.50,2026-01-13 16:05:00
+ORD-CSV-00000008,CUST-CSV-000006,farid@example.com,Germany,Weimar,PROD-CSV-000002,Notebook,Books,7.50,5,0.00,2026-01-14 11:00:00
+ORD-CSV-00000009,CUST-CSV-000007,gina@example.com,Italy,Rome,PROD-CSV-000007,Blender,Home,49.00,1,5.00,2026-01-14 19:40:00
+ORD-CSV-00000010,CUST-CSV-000008,henry@example.com,Germany,Munich,PROD-CSV-000008,Gym Gloves,Sports,18.00,2,0.00,2026-01-15 07:55:00
