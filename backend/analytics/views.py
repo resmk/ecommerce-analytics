@@ -4,7 +4,9 @@ from django.core.cache import cache
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from rest_framework.pagination import PageNumberPagination
+from analytics.models import FactOrder
+from analytics.serializers import FactOrderSerializer
 from analytics.queries import (
     fetch_kpis,
     fetch_revenue_trends,
@@ -180,3 +182,47 @@ class TopProductsView(APIView):
         cache.set(cache_key, data, timeout=300)
         data["cache"] = {"hit": False, "key": cache_key, "ttl_seconds": 300}
         return Response(data, status=status.HTTP_200_OK)
+
+
+class OrdersPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
+class OrdersListView(APIView):
+    """
+    GET /api/v1/orders/?page=1&page_size=25&date_from=...&date_to=...&customer_id=...
+    """
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        today = date.today()
+        date_from_default = today.replace(day=1)
+        date_to_default = today
+
+        try:
+            date_from = parse_date(request.GET.get("date_from"), date_from_default)
+            date_to = parse_date(request.GET.get("date_to"), date_to_default)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if date_from > date_to:
+            return Response({"error": "date_from must be <= date_to"}, status=status.HTTP_400_BAD_REQUEST)
+
+        qs = (
+            FactOrder.objects.select_related("customer", "product", "time")
+            .filter(created_at__date__gte=date_from, created_at__date__lte=date_to)
+            .order_by("-created_at")
+        )
+
+        customer_id = request.GET.get("customer_id")
+        if customer_id:
+            qs = qs.filter(customer__customer_id=customer_id)
+
+        paginator = OrdersPagination()
+        page = paginator.paginate_queryset(qs, request)
+
+        serializer = FactOrderSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
