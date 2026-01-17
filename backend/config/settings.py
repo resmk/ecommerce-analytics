@@ -13,6 +13,15 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "load-csv-orders-every-5-min": {
+        "task": "etl.tasks.load_csv_orders_task",
+        "schedule": crontab(minute="*/5"),
+    }
+}
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -146,6 +155,13 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_TIMEZONE = "Europe/Berlin"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 60 * 10  # 10 minutes safety limit
+
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "E-Commerce Analytics API",
