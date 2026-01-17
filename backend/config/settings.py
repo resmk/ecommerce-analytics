@@ -15,13 +15,14 @@ from dotenv import load_dotenv
 import dj_database_url
 from celery.schedules import crontab
 
+
+
 CELERY_BEAT_SCHEDULE = {
     "load-csv-orders-every-5-min": {
         "task": "etl.tasks.load_csv_orders_task",
         "schedule": crontab(minute="*/5"),
     }
 }
-
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
