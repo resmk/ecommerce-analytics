@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from analytics.models import FactOrder
 from analytics.serializers import FactOrderSerializer
+from rest_framework.permissions import IsAuthenticated
 from analytics.queries import (
     fetch_kpis,
     fetch_revenue_trends,
@@ -194,8 +195,8 @@ class OrdersListView(APIView):
     """
     GET /api/v1/orders/?page=1&page_size=25&date_from=...&date_to=...&customer_id=...
     """
-    authentication_classes = []
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
+
 
     def get(self, request):
         today = date.today()
