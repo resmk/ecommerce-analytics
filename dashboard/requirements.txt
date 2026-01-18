@@ -2,3 +2,4 @@ dash>=2.14
 plotly>=5.18
 requests>=2.31
 pandas>=2.0
+python-dotenv>=1.0
