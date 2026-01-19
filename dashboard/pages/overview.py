@@ -1,5 +1,3 @@
-# dashboard/pages/overview.py
-
 import pandas as pd
 import plotly.graph_objects as go
 import requests
@@ -7,6 +5,11 @@ from dash import html, dcc, Input, Output
 
 from dashboard.utils import api_get, API_BASE
 from dashboard.components.navbar import navbar
+
+
+# Safe empty figure (used when errors happen so Dash doesn't crash)
+EMPTY_FIG = go.Figure()
+EMPTY_FIG.update_layout(margin=dict(l=10, r=10, t=10, b=10), height=360)
 
 
 def kpi_card(title: str, value_id: str):
@@ -166,119 +169,111 @@ def register_callbacks(app):
         Input("refresh", "n_intervals"),
     )
     def update_dashboard(start_date, end_date, granularity, jwt_token, n):
-        params = {}
-        if start_date:
-            params["date_from"] = start_date
-        if end_date:
-            params["date_to"] = end_date
-
-        # KPIs
-        kpis = api_get("/kpis/", params=params)
-
-        # Revenue trends
-        trend_params = dict(params)
-        trend_params["granularity"] = granularity
-        trends = api_get("/revenue/trends/", params=trend_params)
-        df_trend = pd.DataFrame(trends.get("points", []))
-
-        # Make x-axis stable (datetime + sorted)
-        if not df_trend.empty:
-            df_trend["bucket"] = pd.to_datetime(df_trend["bucket"], errors="coerce")
-            df_trend = df_trend.dropna(subset=["bucket"]).sort_values("bucket")
-
-        fig_trend = go.Figure()
-        if not df_trend.empty:
-            fig_trend.add_trace(
-                go.Scatter(
-                    x=df_trend["bucket"],
-                    y=df_trend["revenue"],
-                    mode="lines+markers",
-                )
-            )
-        fig_trend.update_layout(
-            margin=dict(l=10, r=10, t=10, b=10),
-            height=360,
-            uirevision="revenue-trend",  # keep view stable across refresh
-        )
-
-        # Top products
-        top = api_get(
-            "/products/top-sellers/",
-            params={**params, "metric": "revenue", "limit": 10},
-        )
-        df_top = pd.DataFrame(top.get("items", []))
-
-        fig_top = go.Figure()
-        if not df_top.empty:
-            fig_top.add_trace(go.Bar(x=df_top["product_id"], y=df_top["revenue"]))
-        fig_top.update_layout(
-            margin=dict(l=10, r=10, t=10, b=10),
-            height=360,
-            uirevision="top-products",  # keep view stable across refresh
-        )
-
-        status = f"API: {API_BASE} | Refresh tick: {n}"
-
-        # Recent orders (JWT protected)
-        orders_fig = go.Figure()
-        orders_error = ""
         try:
-            orders = api_get(
-                "/orders/",
-                params={**params, "page_size": 15},
-                token=jwt_token,
-            )
-            df_orders = pd.DataFrame(orders.get("results", []))
+            params = {}
+            if start_date:
+                params["date_from"] = start_date
+            if end_date:
+                params["date_to"] = end_date
 
-            if not df_orders.empty:
-                show_cols = [
-                    "order_id",
-                    "created_at",
-                    "order_amount",
-                    "quantity",
-                    "customer_id",
-                    "product_id",
-                ]
-                for c in show_cols:
-                    if c not in df_orders.columns:
-                        df_orders[c] = ""
-                df_orders = df_orders[show_cols]
+            # KPIs (if this fails, we catch it below)
+            kpis = api_get("/kpis/", params=params)
 
-                orders_fig = go.Figure(
-                    data=[
-                        go.Table(
-                            header=dict(values=list(df_orders.columns)),
-                            cells=dict(
-                                values=[
-                                    df_orders[col].astype(str).tolist()
-                                    for col in df_orders.columns
-                                ]
-                            ),
-                        )
-                    ]
+            # Revenue trends
+            trend_params = dict(params)
+            trend_params["granularity"] = granularity
+            trends = api_get("/revenue/trends/", params=trend_params)
+            df_trend = pd.DataFrame(trends.get("points", []))
+
+            if not df_trend.empty:
+                df_trend["bucket"] = pd.to_datetime(df_trend["bucket"], errors="coerce")
+                df_trend = df_trend.dropna(subset=["bucket"]).sort_values("bucket")
+
+            fig_trend = go.Figure()
+            if not df_trend.empty:
+                fig_trend.add_trace(
+                    go.Scatter(x=df_trend["bucket"], y=df_trend["revenue"], mode="lines+markers")
                 )
-                orders_fig.update_layout(
-                    margin=dict(l=10, r=10, t=10, b=10),
-                    height=420,
-                    uirevision="orders-table",  # prevent jumpy table redraw
-                )
-
-        except requests.HTTPError:
-            orders_error = (
-                "Orders endpoint requires a valid JWT access token. "
-                "Get one from /api/docs → /api/v1/auth/token/."
+            fig_trend.update_layout(
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=360,
+                uirevision="revenue-trend",
             )
+
+            # Top products
+            top = api_get("/products/top-sellers/", params={**params, "metric": "revenue", "limit": 10})
+            df_top = pd.DataFrame(top.get("items", []))
+
+            fig_top = go.Figure()
+            if not df_top.empty:
+                fig_top.add_trace(go.Bar(x=df_top["product_id"], y=df_top["revenue"]))
+            fig_top.update_layout(
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=360,
+                uirevision="top-products",
+            )
+
+            status = f"API: {API_BASE} | Refresh tick: {n}"
+
+            # Recent orders (JWT protected)
+            orders_fig = go.Figure()
+            orders_error = ""
+
+            try:
+                orders = api_get("/orders/", params={**params, "page_size": 15}, token=jwt_token)
+                df_orders = pd.DataFrame(orders.get("results", []))
+
+                if not df_orders.empty:
+                    show_cols = ["order_id", "created_at", "order_amount", "quantity", "customer_id", "product_id"]
+                    for c in show_cols:
+                        if c not in df_orders.columns:
+                            df_orders[c] = ""
+                    df_orders = df_orders[show_cols]
+
+                    orders_fig = go.Figure(
+                        data=[
+                            go.Table(
+                                header=dict(values=list(df_orders.columns)),
+                                cells=dict(values=[df_orders[col].astype(str).tolist() for col in df_orders.columns]),
+                            )
+                        ]
+                    )
+                    orders_fig.update_layout(
+                        margin=dict(l=10, r=10, t=10, b=10),
+                        height=420,
+                        uirevision="orders-table",
+                    )
+
+            except requests.HTTPError:
+                orders_error = (
+                    "Orders endpoint requires a valid JWT access token. "
+                    "Get one from /api/docs → /api/v1/auth/token/."
+                )
+            except Exception as e:
+                orders_error = f"Failed to load orders: {e}"
+
+            return (
+                f"€ {kpis['total_revenue']:.2f}",
+                str(kpis["total_orders"]),
+                str(kpis["unique_customers"]),
+                f"€ {kpis['avg_order_value']:.2f}",
+                fig_trend,
+                fig_top,
+                status,
+                orders_fig,
+                orders_error,
+            )
+
         except Exception as e:
-            orders_error = f"Failed to load orders: {e}"
-
-        return (
-            f"€ {kpis['total_revenue']:.2f}",
-            str(kpis["total_orders"]),
-            str(kpis["unique_customers"]),
-            f"€ {kpis['avg_order_value']:.2f}",
-            fig_trend,
-            fig_top,
-            status,
-            orders_fig,
-            orders_error,
-        )
+            # If any main API call fails, return safe placeholders so Dash never crashes
+            return (
+                "—",
+                "—",
+                "—",
+                "—",
+                EMPTY_FIG,
+                EMPTY_FIG,
+                f"ERROR: {e} | Check DASH_API_BASE_URL and backend server",
+                EMPTY_FIG,
+                "Dashboard failed to load. Fix API_BASE or backend, then refresh.",
+            )
